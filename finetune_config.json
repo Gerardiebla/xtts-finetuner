@@ -1,0 +1,9 @@
+{
+  "output_model_name": "nicholas_ofczarek_de",
+  "language": "de",
+  "epochs": 20,
+  "batch_size": 4,
+  "learning_rate": 0.0001,
+  "model_type": "glow_tts",
+  "description": "Fine-tuned model for Nicholas Ofczarek's German voice (diarized)"
+}

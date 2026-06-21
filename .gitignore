@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv_tts/
+venv/
+env/
+
+# Model files (large, should be downloaded/generated locally)
+xtts_base/
+finetuned_models/
+*.pth
+*.ckpt
+checkpoint*.pth
+best_model*.pth
+
+# Training artifacts
+training_*.log
+trainer_*.log
+events.out.tfevents.*
+runs/
+logs/
+
+# Dataset (should be sourced elsewhere)
+alltalk/finetune/input/
+training_data/
+
+# Audio outputs (test generation)
+test_output*.wav
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Wheels (downloaded for install)
+wheels/
+
+# Tmp files
+.claude/
