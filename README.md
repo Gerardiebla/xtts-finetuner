@@ -12,10 +12,25 @@ A lightweight, local GUI pipeline for fine-tuning [XTTS v2](https://github.com/c
 ### Requirements
 - Windows 10/11 with Python 3.11+
 - NVIDIA GPU (tested on GTX 1650 4GB; CPU training is possible but very slow)
-- CUDA 12.4 (optional; CPU-only mode works)
-- ~3–4 GB free disk space for the base XTTS v2 model
+- CUDA 12.4 (auto-installed)
+- ~3–4 GB free disk space for the base XTTS v2 model + ~2.5GB for PyTorch
 
-### Installation
+### Quick Start (Recommended)
+
+1. **Clone or download this repo** to a local folder (not OneDrive).
+
+2. **Run setup once:**
+   - Right-click `setup.ps1` → **Run with PowerShell**
+   - Or open PowerShell in the folder and run: `powershell -ExecutionPolicy Bypass -File setup.ps1`
+   - This installs Python dependencies into `venv_tts/` (takes 5–10 minutes).
+
+3. **Launch the app:**
+   - Double-click **`XTTS_Studio.bat`** to start the GUI.
+   - The app opens with all three tabs (Prep, Train, Test) ready to use.
+
+### Manual Installation (Advanced)
+
+If you prefer manual setup:
 
 1. **Clone this repo:**
    ```bash
@@ -23,7 +38,7 @@ A lightweight, local GUI pipeline for fine-tuning [XTTS v2](https://github.com/c
    cd xtts-finetuner
    ```
 
-2. **Create a virtual environment:**
+2. **Create and activate a virtual environment:**
    ```bash
    python -m venv venv_tts
    venv_tts\Scripts\activate
@@ -35,18 +50,10 @@ A lightweight, local GUI pipeline for fine-tuning [XTTS v2](https://github.com/c
    pip install transformers==4.57.1 faster-whisper librosa soundfile numpy
    ```
 
-   **Note:** If the torch wheels are large and hit Windows Defender locks, download them locally first:
+4. **Run the app:**
    ```bash
-   pip download torch torchaudio -d wheels --index-url https://download.pytorch.org/whl/cu124
-   pip install --no-index --find-links wheels torch torchaudio
+   python audio_prep_gui.py
    ```
-
-4. **Set the Coqui license flag:**
-   ```bash
-   # Windows PowerShell
-   $env:COQUI_TOS_AGREED = "1"
-   ```
-   Or add it to your shell profile permanently.
 
 ### Usage
 
@@ -139,7 +146,24 @@ Training will be much slower (hours → days for 12 epochs).
 ### Why Coqui-TTS?
 The original `TTS==0.22.0` package requires MSVC on Windows (no prebuilt wheel for the Cython monotonic-alignment extension). The **coqui-tts** fork (0.27.5) ships prebuilt cp311 wheels and works out-of-the-box on Windows.
 
+## Launcher Notes
+
+**`XTTS_Studio.bat`** is a simple batch launcher that:
+1. Checks if `venv_tts/` exists (run `setup.ps1` if it doesn't)
+2. Sets the Coqui license flag
+3. Launches the GUI
+
+**Tip:** If the window appears briefly and closes, check the PowerShell console for error messages. The most common issue is a missing dependency — re-run `setup.ps1`.
+
 ## Troubleshooting
+
+**Launcher won't start:**
+- Verify `setup.ps1` ran successfully (venv_tts folder should exist)
+- Open PowerShell in the folder and run: `.\venv_tts\Scripts\python.exe audio_prep_gui.py` to see the actual error
+
+**CUDA not detected:**
+- Run `nvidia-smi` in PowerShell to verify your GPU driver is installed
+- Re-run `setup.ps1` to reinstall PyTorch with CUDA
 
 | Issue | Cause | Fix |
 |-------|-------|-----|
