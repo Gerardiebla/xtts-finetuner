@@ -45,7 +45,7 @@ if ($LASTEXITCODE -ne 0) {
 # Install other dependencies
 Write-Host ""
 Write-Host "Installing XTTS Studio dependencies..." -ForegroundColor Yellow
-& $pip install coqui-tts transformers==4.57.1 faster-whisper librosa soundfile numpy
+& $pip install coqui-tts transformers==4.57.1 faster-whisper librosa soundfile numpy spacy
 
 # Verify CUDA
 Write-Host ""
