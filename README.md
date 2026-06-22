@@ -1,11 +1,11 @@
 # XTTS Studio
 
-A lightweight, local GUI pipeline for fine-tuning [XTTS v2](https://github.com/coqui-ai/TTS/blob/main/TTS/tts/models/xtts) (multilingual voice synthesis) to clone German speakers. Runs entirely on Windows with a GTX 1650 4GB GPU.
+A lightweight, local GUI pipeline for fine-tuning [XTTS v2](https://github.com/coqui-ai/TTS/blob/main/TTS/tts/models/xtts) (multilingual voice synthesis) to clone speakers in any language supported by XTTS. Runs entirely on Windows with a modest NVIDIA GPU (tested on GTX 1650 4GB).
 
 **Three steps, one window:**
-1. **Prep** — add cleaned single-speaker audio clips → auto-trim silence → segment to ≤11s → German transcription → `metadata.txt`
+1. **Prep** — add cleaned single-speaker audio clips → auto-trim silence → segment to ≤11s → auto-transcription → `metadata.txt`
 2. **Train** — fine-tune XTTS on your dataset (auto-exports inference-ready model)
-3. **Test** — generate German speech in your cloned voice
+3. **Test** — generate speech in your cloned voice
 
 ## Setup
 
@@ -19,8 +19,8 @@ A lightweight, local GUI pipeline for fine-tuning [XTTS v2](https://github.com/c
 
 1. **Clone this repo:**
    ```bash
-   git clone https://github.com/YOUR-USERNAME/xtts-studio.git
-   cd xtts-studio
+   git clone https://github.com/Gerardiebla/xtts-finetuner.git
+   cd xtts-finetuner
    ```
 
 2. **Create a virtual environment:**
@@ -61,7 +61,8 @@ venv_tts\Scripts\python.exe audio_prep_gui.py
   - ⚠️ **Minimal background noise** — the tool trims silence but does NOT denoise
 - **Silence threshold (top_db)** — lower = more aggressive trimming (default 30)
 - **Min/Max clip duration** — enforces ≤11s for XTTS compatibility (default 2–11s)
-- **Transcribe** — tick to auto-transcribe with faster-whisper (German) and generate `metadata.txt`
+- **Transcribe** — tick to auto-transcribe with faster-whisper and generate `metadata.txt` (supports all XTTS-supported languages; auto-detects or manually set)
+- **Language** — defaults to German (`de`); change to any ISO 639-1 code (e.g. `en`, `es`, `fr`, `zh`)
 - **Process** → outputs trimmed `clip_XXXX.wav` files and `metadata.txt`
 
 #### Tab 2: Train
@@ -79,7 +80,7 @@ venv_tts\Scripts\python.exe audio_prep_gui.py
 #### Tab 3: Test
 - **Model folder** — where your trained `model.pth` + `config.json` + `vocab.json` live
 - **Reference clip** — a short (≤10s) audio sample of the speaker, used for voice conditioning (default: first clip from prep)
-- **Text** — German text to synthesize
+- **Text** — text to synthesize (in the language of your trained model)
 - **Language** — default `de`; can use other XTTS-supported languages
 - **Temperature** — 0.7 (default); lower = more predictable, higher = more varied
 - **Generate** → synthesizes audio and auto-plays it (model is cached for fast repeats)
@@ -105,15 +106,15 @@ XTTS v2's fine-tune dataset loader has a hard limit on clip duration (~11s). Lon
 The trainer outputs `best_model.pth`, which is NOT directly usable by the `Xtts` inference loader. The keys are prefixed `xtts.` and include optimizer/scheduler state. **The trainer auto-exports `model.pth`** (correct format) at the end. If needed manually, use `export_xtts_model.py`.
 
 ### Learning Rate & Epochs
-The initial 20-epoch run at LR 5e-6 barely moved the model (4.03 → 3.82 eval loss, ~5%). We recommend:
-- **LR 1e-5** — 4× higher, better learning per epoch
-- **~12 epochs** — lower than 20; the model overfits after the best-model checkpoint anyway
-- **Use best_model.pth** — frozen at lowest eval loss, before the overfit tail
+Recommended tuning:
+- **LR 1e-5** — good starting point for low-VRAM fine-tuning; adjust down if loss is erratic, up if movement is slow
+- **~12 epochs** — reduces overfitting risk; rely on best_model (lowest eval loss) rather than last checkpoint
+- **Use best_model.pth** — auto-exported at the end, frozen at lowest eval loss before potential overfit tail
 
 ### Noise & Speaker Contamination
 Remaining audio quality issues are data-side, not model-side:
 - **Noise** — the Prep tool trims silence but does NOT denoise. Feed it clean, low-noise source audio.
-- **Speaker swapping** — if your source interviews have both the speaker and an interviewer, and the transcription didn't separate them, both voices end up in the training set. Use single-speaker clips only, or manually edit `metadata.txt` post-Prep.
+- **Speaker contamination** — if your source audio contains multiple speakers and diarisation didn't separate them, multiple voices end up in the training set. Use single-speaker clips only, or manually filter `metadata.txt` post-Prep.
 
 ### GPU Memory
 On a 4GB GTX 1650:
