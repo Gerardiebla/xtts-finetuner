@@ -84,11 +84,14 @@ def process_file(src_path, out_dir, params, log, whisper_model, start_index):
 
             text = ""
             if whisper_model is not None:
-                segs, _ = whisper_model.transcribe(
-                    os.path.join(out_dir, out_name), language=params["lang"])
+                wav_path = os.path.join(out_dir, out_name)
+                log(f"    transcribing {out_name}...")
+                segs, _ = whisper_model.transcribe(wav_path, language=params["lang"])
                 text = " ".join(s.text.strip() for s in segs).strip()
-                if not text:
-                    log(f"  {out_name}: (no transcript, kept anyway)")
+                if text:
+                    log(f"    ✓ {out_name}: {text[:60]}..." if len(text) > 60 else f"    ✓ {out_name}: {text}")
+                else:
+                    log(f"    {out_name}: (no transcript, kept anyway)")
             results.append((out_name, text))
             idx += 1
 
