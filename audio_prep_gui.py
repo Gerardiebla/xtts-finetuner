@@ -375,7 +375,15 @@ class App(tk.Tk):
         self.train_stop_btn.pack(side="left", padx=4)
         self._train_proc = None
 
-        self.train_log = LogPane(t, height=16)
+        pf = ttk.Frame(t); pf.pack(fill="x", **pad)
+        self.train_prog = ttk.Progressbar(pf, mode="determinate", maximum=100)
+        self.train_prog.pack(side="left", fill="x", expand=True)
+        self.train_status = ttk.Label(pf, text="", width=25, justify="right")
+        self.train_status.pack(side="left", padx=8)
+        self._train_start_time = None
+        self._train_steps_seen = 0
+
+        self.train_log = LogPane(t, height=14)
 
     def run_train(self):
         ds = self.train_dataset_var.get().strip()
@@ -401,16 +409,30 @@ class App(tk.Tk):
         threading.Thread(target=self._train_thread, args=(cmd,), daemon=True).start()
 
     def _train_thread(self, cmd):
+        import re, time
         try:
             self._train_proc = subprocess.Popen(
                 cmd, cwd=str(THIS_DIR), stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True,
                 encoding="utf-8", errors="replace")
+            self._train_start_time = time.time()
+            self._train_steps_seen = 0
+            total_epochs = int(self.epochs_var.get())
+            epoch_pat = re.compile(r"EPOCH:\s*(\d+)/(\d+)")
+            step_pat = re.compile(r"STEP:\s*(\d+)/(\d+)")
             for line in self._train_proc.stdout:
                 self.train_log.log(line.rstrip())
+                epoch_m = epoch_pat.search(line)
+                step_m = step_pat.search(line)
+                if epoch_m and step_m:
+                    ep, ep_max = int(epoch_m.group(1)), int(epoch_m.group(2))
+                    st, st_max = int(step_m.group(1)), int(step_m.group(2))
+                    pct = int((ep * st_max + st) * 100 / (total_epochs * st_max))
+                    self.after(0, lambda p=pct, e=ep, s=st, sm=st_max: self._update_train_progress(p, e, s, sm))
             self._train_proc.wait()
             code = self._train_proc.returncode
             self.train_log.log(f"\n[TRAIN PROCESS EXITED] code={code}")
+            self.after(0, lambda: self.train_prog.config(value=100 if code == 0 else 0))
             if code == 0:
                 # point the Test tab at the freshly exported model
                 self.after(0, lambda: self.test_ckpt_var.set(
@@ -422,6 +444,20 @@ class App(tk.Tk):
             self._train_proc = None
             self.after(0, lambda: self.train_btn.config(state="normal"))
             self.after(0, lambda: self.train_stop_btn.config(state="disabled"))
+
+    def _update_train_progress(self, pct, epoch, step, steps_max):
+        import time
+        self.train_prog.config(value=pct)
+        elapsed = time.time() - self._train_start_time
+        if step > 0 and elapsed > 0:
+            steps_per_sec = (epoch * steps_max + step) / elapsed
+            remaining_steps = (self.epochs_var.get() * steps_max) - (epoch * steps_max + step)
+            eta_secs = remaining_steps / steps_per_sec if steps_per_sec > 0 else 0
+            eta_mins = int(eta_secs / 60)
+            status = f"Ep {epoch}/{self.epochs_var.get()} | {pct}% | ETA {eta_mins}m"
+        else:
+            status = f"Ep {epoch}/{self.epochs_var.get()} | {pct}%"
+        self.train_status.config(text=status)
 
     def stop_train(self):
         if self._train_proc and self._train_proc.poll() is None:
