@@ -383,7 +383,14 @@ class App(tk.Tk):
         self._train_start_time = None
         self._train_steps_seen = 0
 
-        self.train_log = LogPane(t, height=14)
+        gf = ttk.Frame(t); gf.pack(fill="x", **pad)
+        ttk.Label(gf, text="GPU Stats:").pack(anchor="w")
+        self.train_gpu_stats = ttk.Label(gf, text="—", font=("Consolas", 9), foreground="#0a0")
+        self.train_gpu_stats.pack(anchor="w")
+        self._gpu_monitor_thread = None
+        self._gpu_monitor_stop = False
+
+        self.train_log = LogPane(t, height=11)
 
     def run_train(self):
         ds = self.train_dataset_var.get().strip()
@@ -406,6 +413,9 @@ class App(tk.Tk):
         self.train_log.log("LAUNCH: " + " ".join(f'"{c}"' if " " in c else c for c in cmd))
         self.train_btn.config(state="disabled")
         self.train_stop_btn.config(state="normal")
+        self._gpu_monitor_stop = False
+        self._gpu_monitor_thread = threading.Thread(target=self._gpu_monitor_loop, daemon=True)
+        self._gpu_monitor_thread.start()
         threading.Thread(target=self._train_thread, args=(cmd,), daemon=True).start()
 
     def _train_thread(self, cmd):
@@ -442,8 +452,10 @@ class App(tk.Tk):
             self.train_log.log(traceback.format_exc())
         finally:
             self._train_proc = None
+            self._gpu_monitor_stop = True
             self.after(0, lambda: self.train_btn.config(state="normal"))
             self.after(0, lambda: self.train_stop_btn.config(state="disabled"))
+            self.after(0, lambda: self.train_gpu_stats.config(text="—"))
 
     def _update_train_progress(self, pct, epoch, step, steps_max):
         import time
@@ -458,6 +470,30 @@ class App(tk.Tk):
         else:
             status = f"Ep {epoch}/{self.epochs_var.get()} | {pct}%"
         self.train_status.config(text=status)
+
+    def _gpu_monitor_loop(self):
+        import subprocess, time
+        while not self._gpu_monitor_stop:
+            try:
+                result = subprocess.run(
+                    ["nvidia-smi", "--query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,power.limit",
+                     "--format=csv,nounits,noheader", "-i", "0"],
+                    capture_output=True, text=True, timeout=2)
+                if result.returncode == 0:
+                    parts = result.stdout.strip().split(", ")
+                    if len(parts) >= 6:
+                        util = parts[0].strip()
+                        mem_used = parts[1].strip()
+                        mem_total = parts[2].strip()
+                        temp = parts[3].strip()
+                        power = parts[4].strip()
+                        power_limit = parts[5].strip()
+                        stats = (f"GPU: {util}% | Mem: {mem_used}/{mem_total} MB | "
+                                f"Temp: {temp}°C | Power: {power}W/{power_limit}W")
+                        self.after(0, lambda s=stats: self.train_gpu_stats.config(text=s))
+            except Exception:
+                pass
+            time.sleep(1)
 
     def stop_train(self):
         if self._train_proc and self._train_proc.poll() is None:
