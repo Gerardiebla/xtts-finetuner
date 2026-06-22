@@ -322,11 +322,20 @@ class App(tk.Tk):
         ttk.Label(of, text="Output model folder:").pack(anchor="w")
         r2 = ttk.Frame(of); r2.pack(fill="x")
         self.train_output_var = tk.StringVar(value=str(
-            THIS_DIR / "finetuned_models" / "nicholas_ofczarek_de"))
+            THIS_DIR / "finetuned_models" / "my_model"))
         ttk.Entry(r2, textvariable=self.train_output_var).pack(
             side="left", fill="x", expand=True)
         ttk.Button(r2, text="Browse…", command=lambda: self._pick_into(
             self.train_output_var)).pack(side="left", padx=4)
+
+        bf = ttk.Frame(t); bf.pack(fill="x", **pad)
+        ttk.Label(bf, text="Base model folder (XTTS v2):").pack(anchor="w")
+        r3 = ttk.Frame(bf); r3.pack(fill="x")
+        self.train_base_var = tk.StringVar(value=str(THIS_DIR / "xtts_base"))
+        ttk.Entry(r3, textvariable=self.train_base_var).pack(
+            side="left", fill="x", expand=True)
+        ttk.Button(r3, text="Browse…", command=lambda: self._pick_into(
+            self.train_base_var)).pack(side="left", padx=4)
 
         p = ttk.LabelFrame(t, text="Hyperparameters"); p.pack(fill="x", **pad)
         self.epochs_var = tk.IntVar(value=12)
@@ -379,6 +388,7 @@ class App(tk.Tk):
         cmd = [PY, str(THIS_DIR / "train_xtts_local.py"),
                "--dataset", ds,
                "--output", self.train_output_var.get().strip(),
+               "--base-dir", self.train_base_var.get().strip(),
                "--epochs", str(int(self.epochs_var.get())),
                "--lr", self.lr_var.get().strip(),
                "--batch-size", str(int(self.batch_var.get())),
